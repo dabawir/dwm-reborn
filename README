@@ -18,6 +18,8 @@ necessary as root):
 
     make clean install
 
+`test`
+
 
 Running dwm
 -----------
