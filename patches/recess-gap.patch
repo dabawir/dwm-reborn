@@ -1,0 +1,102 @@
+--- a/dwm.c
++++ b/dwm.c
+@@ -658,7 +658,7 @@
+ 
+ 	if ((c = wintoclient(ev->window))) {
+ 		if (ev->value_mask & CWBorderWidth)
+-			c->bw = ev->border_width;
++			c->bw = borderpx + innerbordergap;
+ 		else if (c->isfloating || !selmon->lt[selmon->sellt]->arrange) {
+ 			m = c->mon;
+ 			if (ev->value_mask & CWX) {
+@@ -980,7 +980,7 @@
+ 		detachstack(c);
+ 		attachstack(c);
+ 		grabbuttons(c, 1);
+-		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
++		XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBg].pixel);
+ 		setfocus(c);
+ 	} else {
+ 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
+@@ -1276,11 +1276,14 @@
+ 		c->y = c->mon->wy + c->mon->wh - HEIGHT(c);
+ 	c->x = MAX(c->x, c->mon->wx);
+ 	c->y = MAX(c->y, c->mon->wy);
+-	c->bw = borderpx;
++	/* Reserve the gap outside the client area so applications such as Firefox
++	 * receive a smaller client geometry instead of being painted over. */
++	c->bw = borderpx + innerbordergap;
+ 
+ 	wc.border_width = c->bw;
+ 	XConfigureWindow(dpy, w, CWBorderWidth, &wc);
+-	XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
++	/* The X border is the spacer; keep it the same color as the window background. */
++	XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBg].pixel);
+ 	configure(c); /* propagates border_width, if size doesn't change */
+ 	updatewindowtype(c);
+ 	updatesizehints(c);
+@@ -1533,7 +1536,7 @@
+ static void
+ resizeinnerborder(Client *c)
+ {
+-	int b, g, availw, availh, x[4], y[4];
++	int b, x[4], y[4];
+ 	unsigned int w[4], h[4], i;
+ 	unsigned long color;
+ 
+@@ -1548,12 +1551,10 @@
+ 		return;
+ 	}
+ 
+-	/* Keep the border inset from the client edge by g pixels. */
+-	g = MIN((int)innerbordergap, MAX(0, (MIN(c->w, c->h) - 2) / 2));
+-	availw = c->w - 2 * g;
+-	availh = c->h - 2 * g;
+-	b = MIN((int)innerborderpx, MIN(availw, availh) / 2);
+-	if (b < 1 || availw < 1 || availh < 1) {
++	/* innerbordergap is reserved by c->bw; draw the colored line at the
++	 * inner edge of that spacer, without covering a large strip of app content. */
++	b = MIN((int)innerborderpx, MIN(c->w, c->h) / 2);
++	if (b < 1 || c->w < 1 || c->h < 1) {
+ 		for (i = 0; i < LENGTH(c->innerborder); i++)
+ 			if (c->innerborder[i])
+ 				XUnmapWindow(dpy, c->innerborder[i]);
+@@ -1561,10 +1562,10 @@
+ 	}
+ 
+ 	/* The top and bottom strips include the corners. */
+-	x[0] = g;           y[0] = g;           w[0] = availw; h[0] = b;
+-	x[1] = g;           y[1] = c->h-g-b;   w[1] = availw; h[1] = b;
+-	x[2] = g;           y[2] = g+b;         w[2] = b;      h[2] = availh - 2*b;
+-	x[3] = c->w-g-b;    y[3] = g+b;         w[3] = b;      h[3] = availh - 2*b;
++	x[0] = 0;       y[0] = 0;       w[0] = c->w; h[0] = b;
++	x[1] = 0;       y[1] = c->h-b;  w[1] = c->w; h[1] = b;
++	x[2] = 0;       y[2] = b;       w[2] = b;    h[2] = c->h - 2*b;
++	x[3] = c->w-b;  y[3] = b;       w[3] = b;    h[3] = c->h - 2*b;
+ 
+ 	color = c == selmon->sel && c->mon == selmon
+ 		? scheme[SchemeSel][ColBorder].pixel
+@@ -2141,7 +2142,7 @@
+ 	if (!c)
+ 		return;
+ 	grabbuttons(c, 0);
+-	XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);
++	XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBg].pixel);
+ 	setinnerbordercolor(c, SchemeNorm);
+ 	if (setfocus) {
+ 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
+--- a/config.h
++++ b/config.h
+@@ -1,9 +1,9 @@
+ /* See LICENSE file for copyright and license details. */
+ 
+ /* appearance */
+-static unsigned int borderpx  = 0;        /* external border; 0 for inset-only */
+-static unsigned int innerborderpx = 2;   /* thickness of the inner border */
+-static unsigned int innerbordergap = 10; /* distance from client edge to inner border */
++static unsigned int borderpx  = 0;        /* additional X border width */
++static unsigned int innerborderpx = 2;   /* thickness of the colored inner line */
++static unsigned int innerbordergap = 10; /* reserved blank gap around client content */
+ static unsigned int snap      = 0;       /* snap pixel */
+ static int showbar            = 1;        /* 0 means no bar */
+ static int topbar             = 1;        /* 0 means bottom bar */

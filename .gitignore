@@ -1,0 +1,8 @@
+# Build artifacts
+dwm
+*.o
+
+# Patch leftovers
+*.orig
+*.rej
+*.bak
